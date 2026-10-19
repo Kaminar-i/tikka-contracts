@@ -1,8 +1,20 @@
 import path from 'path';
 import { Keypair, Networks } from '@stellar/stellar-sdk';
 import { decodeSecretKey } from './keys/secret-key';
-import { logger } from './logging/logger';
 import { RetryPolicyOptions } from './tx/retry-policy';
+
+/**
+ * Thrown by {@link loadAndValidateConfig} when one or more environment
+ * variables are missing or invalid.  Callers (i.e. the composition root /
+ * index.ts) are responsible for logging the reasons, flushing the logger, and
+ * calling process.exit(1).
+ */
+export class ConfigValidationError extends Error {
+  constructor(public readonly reasons: string[]) {
+    super(`Configuration errors:\n${reasons.map((r) => ` - ${r}`).join('\n')}`);
+    this.name = 'ConfigValidationError';
+  }
+}
 
 export interface OracleConfig {
   oracleSecretKey: string;
@@ -132,16 +144,11 @@ export function loadAndValidateConfig(): OracleConfig {
   const rpcSimulateTimeoutMs = readPositiveInt('RPC_SIMULATE_TIMEOUT_MS', 10_000, errors);
 
   if (errors.length > 0) {
-    logger.error('Configuration errors:');
-    for (const error of errors) {
-      logger.error(` - ${error}`);
-    }
-    process.exit(1);
+    throw new ConfigValidationError(errors);
   }
 
-  // At this point errors.length === 0, so rpcUrl, factoryContractId, and oracleSecretKey are defined and valid.
-  // The non-null assertions below are replaced by explicit narrowing guards above
-  // (process.exit(1) means we never reach here with undefined values).
+  // At this point errors.length === 0, so rpcUrl, factoryContractId, and
+  // oracleSecretKey are defined and valid — the guards above ensure it.
 
   // Resolve data directory to an absolute path so it is CWD-independent.
   const dataDir = path.resolve(process.env['DATA_DIR'] ?? './data');

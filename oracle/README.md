@@ -31,6 +31,11 @@ The oracle requires a secure keypair to sign reveal transactions. The `KeyServic
 | `ORACLE_RETRY_BASE_MS`            | No           | Retry backoff base in milliseconds (default: `500`) |
 | `ORACLE_RETRY_MAX_MS`             | No           | Maximum retry backoff in milliseconds (default: `30000`) |
 | `ORACLE_RETRY_MAX_ATTEMPTS`       | No           | Maximum submission attempts (default: `5`) |
+| `METRICS_PORT`                    | No           | Port the Prometheus metrics server listens on (default: `9091`); must differ from `HEALTH_PORT` |
+| `METRICS_BIND_ADDRESS`            | No           | Interface the metrics server binds to (default: `127.0.0.1`) |
+| `METRICS_AUTH_TOKEN`              | Conditional  | Bearer token for the metrics endpoint; **required** when `METRICS_BIND_ADDRESS` is not `127.0.0.1` or `::1` |
+| `QUEUE_MAX_ATTEMPTS`              | No           | Retries before a randomness job is dead-lettered (default: `5`) |
+| `RPC_SIMULATE_TIMEOUT_MS`         | No           | Timeout for each `simulateTransaction` RPC call in ms (default: `10000`) |
 
 ### Local Development (Environment Variables)
 
@@ -43,6 +48,22 @@ FACTORY_CONTRACT_ID="C..."
 ```
 
 The `KeyService` validates the key on startup and never logs the private key.
+
+### Configuration validation
+
+`loadAndValidateConfig` throws a `ConfigValidationError` (exported from
+`src/config.ts`) when any required variable is missing or invalid.  The top-level
+`index.ts` catches it, logs each reason, and exits with code 1 — giving the
+operator a clear list of what to fix without killing the process mid-log-write.
+
+### Metrics auth requirement
+
+When `METRICS_BIND_ADDRESS` is set to anything other than `127.0.0.1` or `::1`
+(i.e. the metrics endpoint is exposed off loopback), `METRICS_AUTH_TOKEN` becomes
+**required**.  A missing token with a non-loopback bind address is a hard config
+error.  The defaults (`127.0.0.1`, no token) are safe for local development and
+the bundled `docker-compose.yml`, where metrics stay on the internal container
+network.
 
 ### Production Setup (Secrets Manager / HSM)
 

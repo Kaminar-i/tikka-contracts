@@ -377,3 +377,27 @@ The manifest records the **factory** only. Instance addresses returned by
 - [ARCHITECTURE.md](ARCHITECTURE.md) — factory → instance → oracle flow
 - [RANDOMNESS.md](RANDOMNESS.md) — choose Internal / External / CommitReveal before create
 - [FAQ.md](FAQ.md) — CLI naming, WASM targets, Node 20 for `oracle/`
+
+## Docker Compose runtime
+
+The `docker-compose.yml` at the repository root targets **Compose V2**
+(`docker compose up`), not Docker Swarm.  Resource limits are expressed as
+Compose V2 service-level keys so they are enforced without a Swarm cluster:
+
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `mem_limit` | `512M` | Hard memory ceiling for the oracle container |
+| `memswap_limit` | `512M` | Disables swap for the oracle (swap == mem_limit) |
+| `cpus` | `"1"` | CPU quota (one core) |
+
+`deploy.resources` works only under Swarm and is **not** used here.
+`restart_policy` is also Swarm-only; `restart: unless-stopped` is the
+Compose equivalent and is what the file uses.
+
+Validate the file before deploying:
+
+```bash
+docker compose config -q    # exits non-zero and prints warnings on invalid keys
+```
+
+CI runs this check on every pull request (see `.github/workflows/ci.yml`).

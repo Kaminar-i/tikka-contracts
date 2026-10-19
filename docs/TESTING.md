@@ -51,6 +51,31 @@ CI runs `cargo test --workspace` and `npm test` in `oracle/` on every pull reque
 
 Contract tests use the Soroban SDK test environment (`Env::default()`, `env.mock_all_auths()`, `testutils`). They are integration-style: they register contracts, mint test tokens, and exercise public entrypoints.
 
+### Enabling `soroban-sdk/testutils` in external consumers (#1278)
+
+`raffle-shared` exposes a `testutils` feature that forwards to
+`soroban-sdk/testutils`:
+
+```toml
+# contracts/raffle-shared/Cargo.toml
+[features]
+testutils = ["soroban-sdk/testutils"]
+```
+
+Any crate that depends on `raffle-shared` and needs the Soroban test helpers
+(e.g. `raffle-instance`'s solvency helpers gated behind
+`#[cfg(any(test, feature = "testutils"))]`) must enable it:
+
+```toml
+# in the consumer crate's Cargo.toml
+[features]
+testutils = ["soroban-sdk/testutils", "raffle-shared/testutils"]
+```
+
+Running `cargo check -p raffle-instance --features testutils` and
+`cargo check -p raffle-shared --features testutils` should both compile
+cleanly with this feature propagation in place.
+
 ### Commands
 
 From the repository root:

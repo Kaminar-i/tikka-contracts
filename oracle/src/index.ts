@@ -1,5 +1,5 @@
 import { Alerter } from './alert/alerter';
-import { loadAndValidateConfig } from './config';
+import { ConfigValidationError, loadAndValidateConfig } from './config';
 import { startHealthServer } from './health/health.server';
 import { configureLogger, logger } from './logging/logger';
 import { createPipeline } from './composition-root';
@@ -84,8 +84,16 @@ function createHealthSnapshot(pipeline: OraclePipeline): {
 }
 
 main().catch((error: unknown) => {
-  logger.error(
-    `Oracle service failed to start: ${error instanceof Error ? error.message : String(error)}`
-  );
-  process.exit(1);
+  if (error instanceof ConfigValidationError) {
+    logger.error('Configuration errors:');
+    for (const reason of error.reasons) {
+      logger.error(` - ${reason}`);
+    }
+  } else {
+    logger.error(
+      `Oracle service failed to start: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  // Give pino a chance to flush buffered log lines before the process exits.
+  setImmediate(() => process.exit(1));
 });
